@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Login — WebSec Lab{% endblock %}
+{% block content %}
+<div style="min-height:80vh;display:flex;align-items:center;justify-content:center">
+<div style="width:100%;max-width:400px">
+  <div style="text-align:center;margin-bottom:2rem">
+    <div style="font-size:3rem">🔐</div>
+    <h1 style="font-size:1.5rem;font-weight:700;margin:.5rem 0">WebSec Lab</h1>
+    <p class="text-muted">Sistema de demostración de seguridad web</p>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span style="font-size:1.1rem">🔑</span>
+      <span class="card-title">Iniciar Sesión</span>
+    </div>
+
+    <form method="POST" action="{{ url_for('auth.login') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-group">
+        <label class="form-label">Usuario</label>
+        <input type="text" name="username" class="form-control" placeholder="admin / analyst / demo" required autofocus>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Contraseña</label>
+        <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="btn btn-primary w-full">Iniciar Sesión</button>
+    </form>
+
+    <div style="margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--border)">
+      <p style="font-size:12px;color:var(--muted);margin-bottom:.5rem">Usuarios de demostración:</p>
+      <div style="display:grid;gap:.4rem">
+        <div style="display:flex;justify-content:space-between;font-size:12px">
+          <span><span class="badge badge-admin">admin</span> admin@websec.lab</span>
+          <code style="color:var(--muted)">Admin123!</code>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px">
+          <span><span class="badge badge-analyst">analyst</span> analyst@websec.lab</span>
+          <code style="color:var(--muted)">Analyst123!</code>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px">
+          <span><span class="badge badge-user">user</span> demo@websec.lab</span>
+          <code style="color:var(--muted)">Demo1234!</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:1rem">
+    <p style="font-size:12px;color:var(--muted)">
+      🛡️ <strong>Seguridad activa:</strong> Hash bcrypt (cost 12) · Bloqueo tras 5 intentos fallidos · CSRF protection · Rate limiting (10/min) · Sesiones HttpOnly+SameSite
+    </p>
+  </div>
+</div>
+</div>
+{% endblock %}

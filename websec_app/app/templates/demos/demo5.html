@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+{% block title %}Demo 5 — Herramientas del Lado del Servidor{% endblock %}
+{% block content %}
+<div style="margin-top:1.5rem">
+  <div style="margin-bottom:1.5rem">
+    <a href="{{ url_for('dash.index') }}" class="text-muted" style="font-size:13px">← Dashboard</a>
+    <h1 class="section-title" style="margin-top:.5rem">🖥️ Demo 5.5 — Herramientas del Lado del Servidor</h1>
+    <p class="text-muted">Cifrado Fernet, integridad de datos, rate limiting, auditoría, RBAC</p>
+  </div>
+
+  <div class="tab-wrapper">
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="setTab(this,'tab-encrypt')">🔐 Cifrado</button>
+      <button class="tab-btn" onclick="setTab(this,'tab-secrets')">🗝️ Secretos</button>
+      <button class="tab-btn" onclick="setTab(this,'tab-ratelimit')">⏱️ Rate Limiting</button>
+      <button class="tab-btn" onclick="setTab(this,'tab-rbac')">👥 RBAC</button>
+    </div>
+
+    <!-- Cifrado -->
+    <div id="tab-encrypt" class="tab-content active">
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-header"><span>🔐</span><span class="card-title">Cifrar datos con Fernet</span></div>
+          <div class="form-group">
+            <label class="form-label">Texto a cifrar</label>
+            <textarea id="enc-text" class="form-control" rows="3" placeholder="Ingresa cualquier dato sensible...">Número de tarjeta: 4532-1234-5678-9012</textarea>
+          </div>
+          <button class="btn btn-primary" onclick="encryptData()">🔐 Cifrar</button>
+          <div id="enc-result" class="result-box" style="margin-top:.75rem">Ingresa texto y cifra...</div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span>🔓</span><span class="card-title">Descifrar y verificar integridad</span></div>
+          <div class="form-group">
+            <label class="form-label">Token cifrado</label>
+            <textarea id="dec-token" class="form-control" rows="3" placeholder="Pega el token cifrado aquí..."></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Hash de integridad (opcional)</label>
+            <input type="text" id="dec-hash" class="form-control" placeholder="SHA-256 del texto original">
+          </div>
+          <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
+            <button class="btn btn-success" onclick="decryptData()">🔓 Descifrar</button>
+            <button class="btn btn-danger btn-sm" onclick="tamperToken()">⚡ Tamper (corromper)</button>
+          </div>
+          <div id="dec-result" class="result-box">Pega el token y descifra...</div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:1rem">
+        <div class="card-header"><span>ℹ️</span><span class="card-title">Cómo funciona Fernet</span></div>
+        <div class="code">from cryptography.fernet import Fernet
+
+# Fernet = AES-128-CBC + HMAC-SHA256
+# Genera clave de 32 bytes (256 bits)
+key = Fernet.generate_key()
+f = Fernet(key)
+
+# Cifrar — el token incluye IV aleatorio + HMAC
+token = f.encrypt(b"dato sensible")
+
+# Descifrar — verifica HMAC automáticamente
+# Si el token fue modificado → InvalidToken
+plaintext = f.decrypt(token)  # lanza excepción si corrupto</div>
+      </div>
+    </div>
+
+    <!-- Secretos -->
+    <div id="tab-secrets" class="tab-content">
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-header"><span>🗝️</span><span class="card-title">Almacenar Secreto Cifrado</span></div>
+          <p class="text-muted" style="font-size:12px;margin-bottom:.75rem">Guarda datos sensibles en la BD cifrados. Solo el propietario puede leerlos (principio de mínimo privilegio).</p>
+          <div class="form-group">
+            <label class="form-label">Etiqueta</label>
+            <input type="text" id="secret-label" class="form-control" value="Mi clave API">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Valor secreto</label>
+            <input type="text" id="secret-value" class="form-control" placeholder="sk-1234...">
+          </div>
+          <button class="btn btn-primary" onclick="storeSecret()">💾 Guardar cifrado</button>
+          <div id="store-result" class="result-box" style="margin-top:.75rem"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span>📂</span><span class="card-title">Mis Secretos</span></div>
+          <button class="btn btn-outline btn-sm" onclick="loadSecrets()" style="margin-bottom:.75rem">🔄 Cargar mis secretos</button>
+          <div id="secrets-list"></div>
+          <div id="secret-detail" class="result-box" style="margin-top:.75rem;display:none"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rate Limiting -->
+    <div id="tab-ratelimit" class="tab-content">
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-header"><span>⏱️</span><span class="card-title">Rate Limiting activo</span></div>
+          <button class="btn btn-primary" onclick="loadRateInfo()">Ver configuración</button>
+          <div id="rate-result" class="result-box" style="margin-top:.75rem"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span>🧪</span><span class="card-title">Simular múltiples requests</span></div>
+          <p class="text-muted" style="font-size:12px;margin-bottom:.75rem">Flask-Limiter retorna HTTP 429 cuando se supera el límite.</p>
+          <div class="form-group">
+            <label class="form-label">Número de requests a enviar</label>
+            <input type="number" id="req-count" class="form-control" value="5" min="1" max="20">
+          </div>
+          <button class="btn btn-primary" onclick="simulateRequests()">Enviar requests</button>
+          <div id="sim-result" class="result-box" style="margin-top:.75rem"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RBAC -->
+    <div id="tab-rbac" class="tab-content">
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-header"><span>👥</span><span class="card-title">Tu Rol y Permisos</span></div>
+          <table class="table">
+            <tr><th>Permiso</th><th>Tu acceso ({{ current_user.role.name }})</th></tr>
+            <tr><td>can_view_audit</td><td>{% if current_user.has_permission('can_view_audit') %}<span class="badge badge-success">✅ Sí</span>{% else %}<span class="badge badge-danger">❌ No</span>{% endif %}</td></tr>
+            <tr><td>can_manage_users</td><td>{% if current_user.has_permission('can_manage_users') %}<span class="badge badge-success">✅ Sí</span>{% else %}<span class="badge badge-danger">❌ No</span>{% endif %}</td></tr>
+            <tr><td>can_access_demos</td><td>{% if current_user.has_permission('can_access_demos') %}<span class="badge badge-success">✅ Sí</span>{% else %}<span class="badge badge-danger">❌ No</span>{% endif %}</td></tr>
+            <tr><td>can_view_secrets</td><td>{% if current_user.has_permission('can_view_secrets') %}<span class="badge badge-success">✅ Sí</span>{% else %}<span class="badge badge-danger">❌ No</span>{% endif %}</td></tr>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-header"><span>🔒</span><span class="card-title">Probar Acceso Denegado</span></div>
+          <p class="text-muted" style="font-size:12px;margin-bottom:.75rem">Estos endpoints están protegidos por RBAC. El intento queda registrado en auditoría.</p>
+          <div style="display:grid;gap:.5rem">
+            <button class="btn btn-outline" onclick="testAccess('/admin/')">🔐 Acceder panel Admin (solo admin)</button>
+            <button class="btn btn-outline" onclick="testAccess('/admin/audit')">📋 Ver log Auditoría (admin/analyst)</button>
+            <button class="btn btn-outline" onclick="testAccess('/admin/users')">👥 Gestionar Usuarios (solo admin)</button>
+          </div>
+          <div id="rbac-result" class="result-box" style="margin-top:.75rem"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:1rem;display:flex;gap:.75rem">
+    <a href="{{ url_for('demo.demo4') }}" class="btn btn-outline">← Demo 5.4</a>
+    {% if current_user.has_permission('can_view_audit') %}
+    <a href="{{ url_for('admin.audit_log') }}" class="btn btn-primary">Ver Log de Auditoría →</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let lastEncrypted = null;
+let lastHash = null;
+
+async function encryptData() {
+  const text = document.getElementById('enc-text').value;
+  if (!text) return;
+  const data = await apiPost('{{ url_for("demo.demo_encrypt") }}', {text});
+  lastEncrypted = data.encrypted;
+  lastHash = data.integrity_hash;
+  document.getElementById('dec-token').value = data.encrypted || '';
+  document.getElementById('dec-hash').value = data.integrity_hash || '';
+  showResult('enc-result', data);
+}
+
+async function decryptData() {
+  const token = document.getElementById('dec-token').value;
+  const hash = document.getElementById('dec-hash').value;
+  const data = await apiPost('{{ url_for("demo.demo_decrypt") }}', {token, hash});
+  showResult('dec-result', data, !data.valid);
+}
+
+function tamperToken() {
+  const t = document.getElementById('dec-token');
+  if (t.value) {
+    const chars = t.value.split('');
+    const idx = Math.floor(chars.length / 2);
+    chars[idx] = chars[idx] === 'A' ? 'B' : 'A';
+    t.value = chars.join('');
+    document.getElementById('dec-result').innerHTML = '<span style="color:var(--yellow)">⚡ Token corrupto — intenta descifrar para ver el error de integridad</span>';
+  }
+}
+
+async function storeSecret() {
+  const label = document.getElementById('secret-label').value;
+  const value = document.getElementById('secret-value').value;
+  const data = await apiPost('{{ url_for("demo.demo_store_secret") }}', {label, value});
+  showResult('store-result', data, !!data.error);
+  if (!data.error) loadSecrets();
+}
+
+async function loadSecrets() {
+  const secrets = await apiGet('{{ url_for("demo.my_secrets") }}');
+  const el = document.getElementById('secrets-list');
+  if (!secrets.length) { el.innerHTML = '<p class="text-muted" style="font-size:12px">Sin secretos almacenados.</p>'; return; }
+  el.innerHTML = secrets.map(s => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:12px">🗝️ ${s.label}</span>
+      <button class="btn btn-outline btn-sm" onclick="readSecret(${s.id})">Leer</button>
+    </div>`).join('');
+}
+
+async function readSecret(id) {
+  const data = await apiGet(`/demo/api/demo-read-secret/${id}`);
+  const el = document.getElementById('secret-detail');
+  el.style.display = 'block';
+  showResult('secret-detail', data, !!data.error);
+}
+
+async function loadRateInfo() {
+  const data = await apiGet('{{ url_for("demo.demo_rate_limit") }}');
+  showResult('rate-result', data);
+}
+
+async function simulateRequests() {
+  const count = parseInt(document.getElementById('req-count').value);
+  const el = document.getElementById('sim-result');
+  el.innerHTML = `Enviando ${count} requests...`;
+  const results = [];
+  for (let i = 0; i < count; i++) {
+    try {
+      const r = await fetch('{{ url_for("demo.demo_rate_limit") }}');
+      results.push({request: i+1, status: r.status, ok: r.ok});
+    } catch(e) { results.push({request: i+1, error: e.message}); }
+  }
+  showResult('sim-result', results);
+}
+
+async function testAccess(path) {
+  try {
+    const r = await fetch(path);
+    const text = await r.text();
+    showResult('rbac-result', {
+      path, status: r.status,
+      result: r.status === 403 ? '❌ Acceso denegado (403 Forbidden) — RBAC funcionando ✅' :
+              r.status === 200 ? '✅ Acceso concedido — tienes el rol necesario' :
+              `Estado: ${r.status}`
+    }, r.status === 403);
+  } catch(e) { showResult('rbac-result', {error: e.message}, true); }
+}
+</script>
+{% endblock %}

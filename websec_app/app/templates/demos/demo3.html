@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Demo 3 — Vulnerabilidades y Defensas{% endblock %}
+{% block content %}
+<div style="margin-top:1.5rem">
+  <div style="margin-bottom:1.5rem">
+    <a href="{{ url_for('dash.index') }}" class="text-muted" style="font-size:13px">← Dashboard</a>
+    <h1 class="section-title" style="margin-top:.5rem">⚡ Demo 5.3 — Vulnerabilidades y Defensas</h1>
+    <p class="text-muted">SQLi, XSS, hash seguro — OWASP Top 10 en acción</p>
+  </div>
+
+  <div class="tab-wrapper">
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="setTab(this,'tab-sqli')">💉 SQL Injection</button>
+      <button class="tab-btn" onclick="setTab(this,'tab-xss')">📜 XSS</button>
+      <button class="tab-btn" onclick="setTab(this,'tab-hash')">🔑 Hash de Contraseñas</button>
+    </div>
+
+    <!-- SQLi -->
+    <div id="tab-sqli" class="tab-content active">
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-header"><span>⚠️</span><span class="card-title">SQL Injection — Modo Inseguro vs Seguro</span></div>
+          <div class="form-group">
+            <label class="form-label">Nombre de usuario a buscar</label>
+            <input type="text" id="sqli-username" class="form-control" value="admin" placeholder="Prueba: admin'--">
+          </div>
+          <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('sqli-username').value=&quot;admin&quot;">Normal</button>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('sqli-username').value=&quot;admin'--&quot;" style="color:var(--red)">Ataque SQLi</button>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('sqli-username').value=&quot;' OR 1=1--&quot;" style="color:var(--red)">Bypass</button>
+          </div>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-danger" onclick="testSQLi('unsafe')">⚠️ Consulta Insegura</button>
+            <button class="btn btn-success" onclick="testSQLi('safe')">✅ Consulta Segura</button>
+          </div>
+          <div id="sqli-result" class="result-box" style="margin-top:.75rem">Elige un modo y ejecuta...</div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span>📖</span><span class="card-title">Cómo funciona</span></div>
+          <div class="code" style="margin-bottom:.75rem"># ❌ INSEGURO — concatenación directa
+query = f"SELECT * FROM users WHERE username = '{input}'"
+
+# Con input: admin'--
+# Resultado: WHERE username = 'admin'--'
+# El -- comenta el resto → bypass total</div>
+          <div class="code"># ✅ SEGURO — SQLAlchemy ORM
+user = User.query.filter_by(username=username).first()
+# El ORM usa parámetros vinculados automáticamente
+# Input se trata como DATO, nunca como código</div>
+          <div class="alert alert-success" style="margin-top:.75rem">🛡️ Esta app usa SQLAlchemy ORM + Prepared Statements en todas las consultas</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- XSS -->
+    <div id="tab-xss" class="tab-content">
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-header"><span>📜</span><span class="card-title">Cross-Site Scripting (XSS)</span></div>
+          <div class="form-group">
+            <label class="form-label">Input del usuario (prueba con payload XSS)</label>
+            <textarea id="xss-input" class="form-control" rows="3">&lt;script&gt;alert('XSS')&lt;/script&gt;</textarea>
+          </div>
+          <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
+            <button class="btn btn-outline btn-sm" onclick="setXSSInput('&lt;script&gt;alert(1)&lt;/script&gt;')">Script tag</button>
+            <button class="btn btn-outline btn-sm" onclick="setXSSInput('&lt;img src=x onerror=alert(1)&gt;')">img onerror</button>
+            <button class="btn btn-outline btn-sm" onclick="setXSSInput('javascript:alert(1)')">js: protocol</button>
+            <button class="btn btn-outline btn-sm" onclick="setXSSInput('Texto normal')">Sin XSS</button>
+          </div>
+          <button class="btn btn-primary" onclick="testXSS()">Probar protección XSS</button>
+          <div id="xss-result" class="result-box" style="margin-top:.75rem">Ingresa un payload y prueba...</div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span>🛡️</span><span class="card-title">Defensas XSS en esta app</span></div>
+          <div style="display:grid;gap:.6rem">
+            {% for defense in ['Jinja2 auto-escape: {{ variable }} escapa HTML automáticamente', "markupsafe.escape() para salidas explícitas", "CSP bloquea scripts no autorizados aunque logren inyectarse", "HttpOnly cookies: JS no puede robar sesión aunque XSS tenga éxito"] %}
+            <div style="display:flex;gap:.5rem;font-size:12px"><span class="text-green">✅</span><span>{{ defense }}</span></div>
+            {% endfor %}
+          </div>
+          <div class="alert alert-info" style="margin-top:.75rem">
+            En Jinja2: <code>{% raw %}{{ user_input }}{% endraw %}</code> escapa automáticamente.
+            Solo <code>{% raw %}{{ user_input | safe }}{% endraw %}</code> renderiza HTML crudo — y <strong>nunca debe usarse con input de usuario</strong>.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hash -->
+    <div id="tab-hash" class="tab-content">
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-header"><span>🔑</span><span class="card-title">bcrypt vs MD5 — Comparativa</span></div>
+          <div class="form-group">
+            <label class="form-label">Contraseña a hashear</label>
+            <input type="text" id="hash-pwd" class="form-control" value="MiClave123!">
+          </div>
+          <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('hash-pwd').value='123456'">Débil</button>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('hash-pwd').value='password'">Común</button>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('hash-pwd').value='MiClave123!'">Fuerte</button>
+          </div>
+          <button class="btn btn-primary" onclick="testHash()">⚡ Comparar algoritmos</button>
+          <div id="hash-result" class="result-box" style="margin-top:.75rem">Haz clic para comparar...</div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span>📊</span><span class="card-title">¿Por qué bcrypt?</span></div>
+          <table class="table">
+            <tr><th></th><th>MD5</th><th>bcrypt</th></tr>
+            <tr><td>Salt</td><td class="text-red">❌ No</td><td class="text-green">✅ Automático</td></tr>
+            <tr><td>Rainbow Tables</td><td class="text-red">Vulnerable</td><td class="text-green">Inmune</td></tr>
+            <tr><td>Tiempo de cómputo</td><td class="text-red">~0ms (peligroso)</td><td class="text-green">~100ms (intencional)</td></tr>
+            <tr><td>GPU cracking</td><td class="text-red">Millones/seg</td><td class="text-green">Cientos/seg</td></tr>
+            <tr><td>Cost factor</td><td class="text-red">Fijo</td><td class="text-green">Ajustable (12)</td></tr>
+            <tr><td>Uso en prod</td><td class="text-red">❌ Nunca</td><td class="text-green">✅ Recomendado</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:1rem;display:flex;gap:.75rem">
+    <a href="{{ url_for('demo.demo2') }}" class="btn btn-outline">← Demo 5.2</a>
+    <a href="{{ url_for('demo.demo4') }}" class="btn btn-primary">Siguiente: Demo 5.4 →</a>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function setXSSInput(val) { document.getElementById('xss-input').value = val.replace(/&lt;/g,'<').replace(/&gt;/g,'>'); }
+async function testSQLi(mode) {
+  const u = document.getElementById('sqli-username').value;
+  const data = await apiPost('{{ url_for("demo.demo_sqli") }}', {username: u, mode});
+  showResult('sqli-result', data, mode === 'unsafe');
+}
+async function testXSS() {
+  const input = document.getElementById('xss-input').value;
+  const data = await apiPost('{{ url_for("demo.demo_xss") }}', {input});
+  showResult('xss-result', data, data.xss_detected);
+}
+async function testHash() {
+  const pwd = document.getElementById('hash-pwd').value;
+  const data = await apiPost('{{ url_for("demo.demo_hash") }}', {password: pwd});
+  showResult('hash-result', data);
+}
+</script>
+{% endblock %}

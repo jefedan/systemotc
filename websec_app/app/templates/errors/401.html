@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}401 — No Autorizado{% endblock %}
+{% block content %}
+<div style="min-height:60vh;display:flex;align-items:center;justify-content:center;text-align:center">
+  <div>
+    <div style="font-size:4rem">🔐</div>
+    <h1 style="font-size:2rem;margin:.5rem 0;color:var(--yellow)">401 — No Autorizado</h1>
+    <p class="text-muted">Debes iniciar sesión para acceder.</p>
+    <div style="margin-top:1.5rem"><a href="{{ url_for('auth.login') }}" class="btn btn-primary">Iniciar sesión</a></div>
+  </div>
+</div>
+{% endblock %}

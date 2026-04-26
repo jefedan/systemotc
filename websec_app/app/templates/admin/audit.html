@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Log de Auditoría{% endblock %}
+{% block content %}
+<div style="margin-top:1.5rem">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+    <div>
+      <h1 class="section-title">📋 Registro de Auditoría</h1>
+      <p class="text-muted">Cadena de custodia con hash chaining — inmutable y verificable</p>
+    </div>
+    <button class="btn btn-outline" onclick="verifyChain()">🔗 Verificar integridad de cadena</button>
+  </div>
+
+  <!-- Estado de la cadena -->
+  <div class="card" style="margin-bottom:1rem">
+    <div style="display:flex;align-items:center;gap:1rem">
+      {% if chain_status.valid %}
+      <span style="font-size:1.5rem">✅</span>
+      <div>
+        <div style="font-weight:600;color:var(--green)">Cadena íntegra</div>
+        <div style="font-size:12px;color:var(--muted)">{{ chain_status.verified }}/{{ chain_status.total }} registros verificados · Hash chaining SHA-256</div>
+      </div>
+      {% else %}
+      <span style="font-size:1.5rem">❌</span>
+      <div>
+        <div style="font-weight:600;color:var(--red)">¡Cadena comprometida!</div>
+        <div style="font-size:12px;color:var(--red)">Rotura detectada en registro #{{ chain_status.broken_at }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div id="chain-verify-result" class="result-box" style="display:none;margin-bottom:1rem"></div>
+
+  <!-- Tabla de logs -->
+  <div class="card">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Timestamp</th>
+          <th>Usuario</th>
+          <th>Acción</th>
+          <th>Estado</th>
+          <th>IP</th>
+          <th>Detalles</th>
+          <th>Hash</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs.items %}
+        <tr>
+          <td class="text-muted">{{ log.id }}</td>
+          <td style="font-size:11px;white-space:nowrap">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+          <td>
+            {% if log.username %}<span style="font-size:12px">{{ log.username }}</span>
+            {% else %}<span class="text-muted">anon</span>{% endif %}
+          </td>
+          <td><code style="font-size:11px;color:var(--purple)">{{ log.action }}</code></td>
+          <td>
+            {% if log.status == 'success' %}<span class="dot dot-green" title="success"></span>
+            {% elif log.status == 'failure' %}<span class="dot dot-red" title="failure"></span>
+            {% else %}<span class="dot dot-yellow" title="{{ log.status }}"></span>{% endif %}
+            <span style="font-size:11px;color:var(--muted)">{{ log.status }}</span>
+          </td>
+          <td style="font-size:11px;color:var(--muted)">{{ log.ip_address }}</td>
+          <td style="font-size:11px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis">{{ log.details or '—' }}</td>
+          <td><code style="font-size:10px;color:var(--muted)">{{ log.entry_hash[:8] }}...</code></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="text-muted" style="text-align:center;padding:2rem">Sin eventos registrados</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- Paginación -->
+    {% if logs.pages > 1 %}
+    <div style="display:flex;justify-content:center;gap:.5rem;padding:1rem;border-top:1px solid var(--border)">
+      {% if logs.has_prev %}
+      <a href="?page={{ logs.prev_num }}" class="btn btn-outline btn-sm">← Anterior</a>
+      {% endif %}
+      <span style="font-size:12px;color:var(--muted);align-self:center">Pág {{ logs.page }}/{{ logs.pages }}</span>
+      {% if logs.has_next %}
+      <a href="?page={{ logs.next_num }}" class="btn btn-outline btn-sm">Siguiente →</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div style="margin-top:1rem">
+    <a href="{{ url_for('dash.index') }}" class="btn btn-outline">← Dashboard</a>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function verifyChain() {
+  const el = document.getElementById('chain-verify-result');
+  el.style.display = 'block';
+  el.innerHTML = '<span class="spinner"></span> Verificando cadena de integridad...';
+  const data = await apiGet('{{ url_for("admin.audit_verify") }}');
+  showResult('chain-verify-result', data, !data.valid);
+}
+</script>
+{% endblock %}

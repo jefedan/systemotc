@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Admin Panel{% endblock %}
+{% block content %}
+<div style="margin-top:1.5rem">
+  <h1 class="section-title">⚙️ Panel de Administración</h1>
+  <p class="text-muted" style="margin-bottom:1.5rem">Solo accesible con rol <span class="badge badge-admin">admin</span> — RBAC aplicado</p>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="card-header"><span>👥</span><span class="card-title">Usuarios del Sistema</span></div>
+      <table class="table">
+        <thead><tr><th>Usuario</th><th>Rol</th><th>MFA</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody>
+        {% for user in users %}
+        <tr>
+          <td>
+            <div style="font-weight:500">{{ user.username }}</div>
+            <div style="font-size:11px;color:var(--muted)">{{ user.email }}</div>
+          </td>
+          <td><span class="badge badge-{{ user.role.name }}">{{ user.role.name }}</span></td>
+          <td>{% if user.mfa_enabled %}<span class="badge badge-mfa">🛡️</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+          <td>
+            {% if user.is_active %}<span class="badge badge-success">Activo</span>
+            {% else %}<span class="badge badge-danger">Inactivo</span>{% endif %}
+          </td>
+          <td>
+            {% if user.id != current_user.id %}
+            <button class="btn btn-outline btn-sm" onclick="toggleUser({{ user.id }}, '{{ user.username }}')">
+              {{ '🔴 Desactivar' if user.is_active else '🟢 Activar' }}
+            </button>
+            {% else %}
+            <span class="text-muted" style="font-size:11px">(tú)</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span>🔑</span><span class="card-title">Roles RBAC</span></div>
+      {% for role in roles %}
+      <div style="padding:.6rem 0;{% if not loop.last %}border-bottom:1px solid var(--border){% endif %}">
+        <div style="display:flex;justify-content:space-between;margin-bottom:.3rem">
+          <span class="badge badge-{{ role.name }}">{{ role.name }}</span>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:.3rem">{{ role.description }}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:.25rem">
+          {% if role.can_view_audit %}<span class="badge badge-success" style="font-size:10px">ver_audit</span>{% endif %}
+          {% if role.can_manage_users %}<span class="badge badge-success" style="font-size:10px">gestionar_usuarios</span>{% endif %}
+          {% if role.can_access_demos %}<span class="badge badge-success" style="font-size:10px">acceder_demos</span>{% endif %}
+          {% if role.can_view_secrets %}<span class="badge badge-success" style="font-size:10px">ver_secretos</span>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div style="margin-top:1rem;display:flex;gap:.75rem">
+    <a href="{{ url_for('admin.audit_log') }}" class="btn btn-primary">📋 Ver Log de Auditoría</a>
+    <a href="{{ url_for('dash.index') }}" class="btn btn-outline">← Dashboard</a>
+  </div>
+  <div id="toggle-result" class="result-box" style="margin-top:1rem;display:none"></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function toggleUser(uid, name) {
+  if (!confirm(`¿Cambiar estado de ${name}?`)) return;
+  const data = await apiPost(`/admin/users/${uid}/toggle`, {});
+  const el = document.getElementById('toggle-result');
+  el.style.display = 'block';
+  showResult('toggle-result', data);
+  setTimeout(() => location.reload(), 1500);
+}
+</script>
+{% endblock %}

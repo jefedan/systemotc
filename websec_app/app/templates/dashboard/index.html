@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — WebSec Lab{% endblock %}
+{% block content %}
+<div style="margin-top:1.5rem">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+    <div>
+      <h1 style="font-size:1.4rem;font-weight:700">Dashboard</h1>
+      <p class="text-muted">Sistema de demostración — Unidad 5: Seguridad en la Web</p>
+    </div>
+    <div class="flex gap-1">
+      <a href="{{ url_for('auth.change_password') }}" class="btn btn-outline btn-sm">🔑 Contraseña</a>
+      <a href="{{ url_for('auth.mfa_setup') }}" class="btn btn-outline btn-sm">📱 2FA</a>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid grid-4" style="margin-bottom:1.5rem">
+    <div class="card">
+      <div style="font-size:1.8rem;font-weight:700;color:var(--blue)">{{ stats.total_users }}</div>
+      <div class="text-muted">Usuarios registrados</div>
+    </div>
+    <div class="card">
+      <div style="font-size:1.8rem;font-weight:700;color:var(--green)">{{ stats.audit_entries }}</div>
+      <div class="text-muted">Eventos de auditoría</div>
+    </div>
+    <div class="card">
+      <div style="font-size:1.8rem;font-weight:700;color:var(--purple)">{{ stats.my_secrets }}</div>
+      <div class="text-muted">Mis secretos cifrados</div>
+    </div>
+    <div class="card">
+      <div style="font-size:1.8rem;font-weight:700;color:{% if current_user.mfa_enabled %}var(--teal){% else %}var(--yellow){% endif %}">
+        {% if current_user.mfa_enabled %}✅{% else %}⚠️{% endif %}
+      </div>
+      <div class="text-muted">MFA {{ 'Activo' if current_user.mfa_enabled else 'Inactivo' }}</div>
+    </div>
+  </div>
+
+  <div class="grid grid-2">
+    <!-- Demos -->
+    <div>
+      <h2 class="section-title">🧪 5 Demos de Seguridad Web</h2>
+      <div style="display:grid;gap:.75rem">
+        {% set demos = [
+          ('demo.demo1', '🌐', '5.1 Modelos de Seguridad Web', 'SOP, Zero Trust, CSP, cabeceras HTTP'),
+          ('demo.demo2', '🍪', '5.2 Gestión de Sesiones', 'JWT, cookies seguras, MFA en sesión'),
+          ('demo.demo3', '⚡', '5.3 Vulnerabilidades y Defensas', 'SQLi, XSS, hash bcrypt vs MD5'),
+          ('demo.demo4', '🛡️', '5.4 Seguridad del Lado del Cliente', 'CSP, SRI, CSRF, clickjacking'),
+          ('demo.demo5', '🖥️', '5.5 Herramientas del Lado del Servidor', 'Cifrado, rate limiting, auditoría'),
+        ] %}
+        {% for endpoint, icon, title, desc in demos %}
+        <a href="{{ url_for(endpoint) }}" class="card" style="display:flex;align-items:center;gap:1rem;transition:border-color .15s" onmouseover="this.style.borderColor='var(--blue)'" onmouseout="this.style.borderColor='var(--border)'">
+          <span style="font-size:1.8rem;flex-shrink:0">{{ icon }}</span>
+          <div>
+            <div style="font-weight:600;font-size:.9rem">{{ title }}</div>
+            <div class="text-muted" style="font-size:12px">{{ desc }}</div>
+          </div>
+          <span style="margin-left:auto;color:var(--muted)">→</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Info de sesión + eventos recientes -->
+    <div>
+      <h2 class="section-title">👤 Tu sesión</h2>
+      <div class="card" style="margin-bottom:1rem">
+        <table class="table">
+          <tr><td class="text-muted">Usuario</td><td><strong>{{ current_user.username }}</strong></td></tr>
+          <tr><td class="text-muted">Rol</td><td><span class="badge badge-{{ current_user.role.name }}">{{ current_user.role.name }}</span></td></tr>
+          <tr><td class="text-muted">Email</td><td>{{ current_user.email }}</td></tr>
+          <tr><td class="text-muted">MFA</td><td>{% if current_user.mfa_enabled %}<span class="badge badge-mfa">🛡️ Activo</span>{% else %}<span class="badge badge-warning">⚠️ Inactivo</span>{% endif %}</td></tr>
+          <tr><td class="text-muted">Último login</td><td class="text-muted" style="font-size:12px">{{ current_user.last_login.strftime('%Y-%m-%d %H:%M') if current_user.last_login else 'N/A' }}</td></tr>
+        </table>
+        <div style="margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--border)">
+          <p style="font-size:11px;color:var(--muted)"><strong>Permisos RBAC:</strong></p>
+          <div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.3rem">
+            {% if current_user.has_permission('can_view_audit') %}<span class="badge badge-success">ver auditoría</span>{% endif %}
+            {% if current_user.has_permission('can_manage_users') %}<span class="badge badge-success">gestionar usuarios</span>{% endif %}
+            {% if current_user.has_permission('can_access_demos') %}<span class="badge badge-success">acceder demos</span>{% endif %}
+            {% if current_user.has_permission('can_view_secrets') %}<span class="badge badge-success">ver secretos</span>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <h2 class="section-title">📋 Eventos recientes</h2>
+      <div class="card">
+        {% for log in stats.recent_events %}
+        <div style="display:flex;align-items:center;gap:.5rem;padding:.4rem 0;{% if not loop.last %}border-bottom:1px solid var(--border){% endif %}">
+          <span class="dot dot-{% if log.status == 'success' %}green{% elif log.status == 'failure' %}red{% else %}yellow{% endif %}"></span>
+          <span style="font-size:12px;flex:1">{{ log.action }}</span>
+          <span style="font-size:11px;color:var(--muted)">{{ log.timestamp.strftime('%H:%M:%S') }}</span>
+        </div>
+        {% else %}
+        <p class="text-muted" style="font-size:12px">Sin eventos aún</p>
+        {% endfor %}
+        {% if current_user.has_permission('can_view_audit') %}
+        <div style="margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--border)">
+          <a href="{{ url_for('admin.audit_log') }}" class="btn btn-outline btn-sm">Ver log completo →</a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

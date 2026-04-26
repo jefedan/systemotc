@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<title>{% block title %}WebSec Lab{% endblock %}</title>
+<style>
+:root{--bg:#0d1117;--bg2:#161b22;--bg3:#1c2128;--border:#30363d;--text:#e6edf3;--muted:#8b949e;--blue:#58a6ff;--green:#3fb950;--red:#f85149;--yellow:#d29922;--purple:#a371f7;--teal:#39d353;--card:#1c2128;--radius:8px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;line-height:1.6;min-height:100vh}
+a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline}
+.navbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 1.5rem;display:flex;align-items:center;height:56px;position:sticky;top:0;z-index:100}
+.navbar-brand{font-size:1.1rem;font-weight:700;color:var(--text);display:flex;align-items:center;gap:.5rem}
+.navbar-brand span{color:var(--blue)}
+.nav-links{display:flex;gap:.25rem;margin-left:2rem;flex:1}
+.nav-links a{color:var(--muted);padding:.4rem .75rem;border-radius:6px;font-size:13px;transition:all .15s}
+.nav-links a:hover,.nav-links a.active{color:var(--text);background:var(--bg3);text-decoration:none}
+.nav-user{display:flex;align-items:center;gap:.75rem;margin-left:auto}
+.badge{display:inline-flex;align-items:center;padding:.2rem .6rem;border-radius:20px;font-size:11px;font-weight:600}
+.badge-admin{background:rgba(247,81,73,.15);color:var(--red);border:1px solid rgba(247,81,73,.3)}
+.badge-analyst{background:rgba(163,113,247,.15);color:var(--purple);border:1px solid rgba(163,113,247,.3)}
+.badge-user{background:rgba(88,166,255,.15);color:var(--blue);border:1px solid rgba(88,166,255,.3)}
+.badge-success{background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.3)}
+.badge-warning{background:rgba(210,153,34,.15);color:var(--yellow);border:1px solid rgba(210,153,34,.3)}
+.badge-danger{background:rgba(248,81,73,.15);color:var(--red);border:1px solid rgba(248,81,73,.3)}
+.badge-mfa{background:rgba(57,211,83,.15);color:var(--teal);border:1px solid rgba(57,211,83,.3)}
+.container{max-width:1200px;margin:0 auto;padding:1.5rem}
+.grid{display:grid;gap:1rem}
+.grid-2{grid-template-columns:repeat(2,1fr)}
+.grid-3{grid-template-columns:repeat(3,1fr)}
+.grid-4{grid-template-columns:repeat(4,1fr)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem}
+.card-header{border-bottom:1px solid var(--border);padding-bottom:.75rem;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
+.card-title{font-size:.95rem;font-weight:600;color:var(--text)}
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1rem;border-radius:6px;border:none;cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;text-decoration:none}
+.btn:hover{text-decoration:none;opacity:.85}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-success{background:var(--green);color:#fff}
+.btn-danger{background:var(--red);color:#fff}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-outline:hover{border-color:var(--blue);color:var(--blue)}
+.btn-sm{padding:.3rem .65rem;font-size:12px}
+.form-group{margin-bottom:1rem}
+.form-label{display:block;margin-bottom:.4rem;font-size:13px;color:var(--muted)}
+.form-control{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;color:var(--text);font-size:13px;transition:border-color .15s}
+.form-control:focus{outline:none;border-color:var(--blue)}
+.form-control::placeholder{color:var(--muted)}
+textarea.form-control{resize:vertical;min-height:80px}
+.alert{padding:.75rem 1rem;border-radius:6px;margin-bottom:1rem;font-size:13px;border:1px solid transparent}
+.alert-success{background:rgba(63,185,80,.1);border-color:rgba(63,185,80,.3);color:var(--green)}
+.alert-danger{background:rgba(248,81,73,.1);border-color:rgba(248,81,73,.3);color:var(--red)}
+.alert-warning{background:rgba(210,153,34,.1);border-color:rgba(210,153,34,.3);color:var(--yellow)}
+.alert-info{background:rgba(88,166,255,.1);border-color:rgba(88,166,255,.3);color:var(--blue)}
+.table{width:100%;border-collapse:collapse;font-size:13px}
+.table th{background:var(--bg2);padding:.6rem .75rem;text-align:left;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border)}
+.table td{padding:.6rem .75rem;border-bottom:1px solid rgba(48,54,61,.5);vertical-align:middle}
+.table tr:last-child td{border-bottom:none}
+.table tr:hover td{background:rgba(255,255,255,.02)}
+.code{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:.75rem 1rem;font-family:'Fira Code',monospace;font-size:12px;color:var(--green);overflow-x:auto;white-space:pre-wrap;word-break:break-all}
+.icon{width:1em;height:1em;display:inline-block}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dot-green{background:var(--green)}
+.dot-red{background:var(--red)}
+.dot-yellow{background:var(--yellow)}
+.section-title{font-size:1.1rem;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
+.tab-nav{display:flex;gap:.25rem;border-bottom:1px solid var(--border);margin-bottom:1.25rem}
+.tab-btn{padding:.5rem 1rem;background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.tab-btn.active{color:var(--blue);border-bottom-color:var(--blue)}
+.tab-content{display:none}.tab-content.active{display:block}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.result-box{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:1rem;margin-top:.75rem;min-height:60px;font-family:monospace;font-size:12px}
+.flex{display:flex;align-items:center}.gap-1{gap:.5rem}.gap-2{gap:1rem}
+.mt-1{margin-top:.5rem}.mt-2{margin-top:1rem}.mt-3{margin-top:1.5rem}
+.text-muted{color:var(--muted)}.text-green{color:var(--green)}.text-red{color:var(--red)}.text-blue{color:var(--blue)}.text-yellow{color:var(--yellow)}
+.w-full{width:100%}
+.sidebar{width:220px;flex-shrink:0}
+.sidebar-link{display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border-radius:6px;color:var(--muted);font-size:13px;transition:all .15s;margin-bottom:.15rem}
+.sidebar-link:hover{color:var(--text);background:var(--bg3);text-decoration:none}
+.sidebar-link.active{color:var(--blue);background:rgba(88,166,255,.1)}
+.sidebar-section{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;padding:.5rem .75rem .25rem;margin-top:.5rem}
+.layout{display:flex;gap:1.5rem;align-items:flex-start}
+.main-content{flex:1;min-width:0}
+@media(max-width:768px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr}.layout{flex-direction:column}.sidebar{width:100%}}
+</style>
+{% block extra_head %}{% endblock %}
+</head>
+<body>
+{% if current_user.is_authenticated %}
+<nav class="navbar">
+  <div class="navbar-brand">🔐 WebSec<span>Lab</span></div>
+  <div class="nav-links">
+    <a href="{{ url_for('dash.index') }}" {% if request.endpoint == 'dash.index' %}class="active"{% endif %}>Dashboard</a>
+    <a href="{{ url_for('demo.demo1') }}" {% if 'demo' in request.endpoint %}class="active"{% endif %}>Demos</a>
+    {% if current_user.has_permission('can_view_audit') %}
+    <a href="{{ url_for('admin.audit_log') }}" {% if request.endpoint == 'admin.audit_log' %}class="active"{% endif %}>Auditoría</a>
+    {% endif %}
+    {% if current_user.role.name == 'admin' %}
+    <a href="{{ url_for('admin.index') }}" {% if request.endpoint == 'admin.index' %}class="active"{% endif %}>Admin</a>
+    {% endif %}
+  </div>
+  <div class="nav-user">
+    {% if current_user.mfa_enabled %}
+    <span class="badge badge-mfa">🛡️ MFA</span>
+    {% endif %}
+    <span class="badge badge-{{ current_user.role.name }}">{{ current_user.role.name }}</span>
+    <span class="text-muted">{{ current_user.username }}</span>
+    <a href="{{ url_for('auth.mfa_setup') }}" class="btn btn-outline btn-sm">2FA</a>
+    <a href="{{ url_for('auth.logout') }}" class="btn btn-outline btn-sm">Salir</a>
+  </div>
+</nav>
+{% endif %}
+
+<div class="container">
+{% for cat, msg in get_flashed_messages(with_categories=True) %}
+<div class="alert alert-{{ cat if cat != 'message' else 'info' }}" style="margin-top:1rem">{{ msg }}</div>
+{% endfor %}
+{% block content %}{% endblock %}
+</div>
+
+<script>
+const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+async function apiPost(url, data) {
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+    body: JSON.stringify(data)
+  });
+  return r.json();
+}
+async function apiGet(url) {
+  const r = await fetch(url);
+  return r.json();
+}
+function showResult(elId, data, isError=false) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.innerHTML = syntaxHighlight(data);
+  el.style.borderColor = isError ? 'var(--red)' : 'var(--green)';
+}
+function syntaxHighlight(json) {
+  const str = typeof json === 'string' ? json : JSON.stringify(json, null, 2);
+  return str.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, match => {
+    let cls = 'color:var(--blue)';
+    if (/^"/.test(match)) { cls = /:$/.test(match) ? 'color:var(--purple)' : 'color:var(--green)'; }
+    else if (/true|false/.test(match)) { cls = 'color:var(--teal)'; }
+    else if (/null/.test(match)) { cls = 'color:var(--muted)'; }
+    else { cls = 'color:var(--yellow)'; }
+    return `<span style="${cls}">${match}</span>`;
+  });
+}
+function setTab(btn, tabId) {
+  btn.closest('.card, .tab-wrapper').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  btn.closest('.card, .tab-wrapper').querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById(tabId)?.classList.add('active');
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

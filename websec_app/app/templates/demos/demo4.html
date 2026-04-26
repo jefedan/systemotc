@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Demo 4 — Seguridad del Lado del Cliente{% endblock %}
+{% block content %}
+<div style="margin-top:1.5rem">
+  <div style="margin-bottom:1.5rem">
+    <a href="{{ url_for('dash.index') }}" class="text-muted" style="font-size:13px">← Dashboard</a>
+    <h1 class="section-title" style="margin-top:.5rem">🛡️ Demo 5.4 — Seguridad del Lado del Cliente</h1>
+    <p class="text-muted">CSP, SRI, HSTS, cookies seguras, clickjacking, CSRF</p>
+  </div>
+
+  <div class="grid grid-2">
+    <!-- Verificar cabeceras -->
+    <div class="card">
+      <div class="card-header"><span>🔍</span><span class="card-title">Verificar Cabeceras de Seguridad</span></div>
+      <p class="text-muted" style="font-size:12px;margin-bottom:.75rem">Esta aplicación configura automáticamente todas las cabeceras recomendadas por OWASP.</p>
+      <button class="btn btn-primary" onclick="checkHeaders()">Verificar cabeceras activas</button>
+      <div id="headers-result" class="result-box" style="margin-top:.75rem">Haz clic para verificar...</div>
+    </div>
+
+    <!-- Clickjacking demo -->
+    <div class="card">
+      <div class="card-header"><span>🖱️</span><span class="card-title">Protección Clickjacking</span></div>
+      <p class="text-muted" style="font-size:12px;margin-bottom:.75rem">La cabecera <code>X-Frame-Options: DENY</code> y <code>CSP frame-ancestors 'none'</code> bloquean la carga en iframes.</p>
+      <div class="alert alert-warning">
+        <strong>Intento de iframe:</strong> Si intentas cargar esta página en un iframe, el navegador la bloqueará automáticamente.
+      </div>
+      <div class="code">// Cabeceras que protegen:
+X-Frame-Options: DENY
+Content-Security-Policy: frame-ancestors 'none'
+
+// Efecto: ningún sitio externo puede embeber
+// esta aplicación en un &lt;iframe&gt;</div>
+    </div>
+
+    <!-- SRI demo -->
+    <div class="card">
+      <div class="card-header"><span>🔗</span><span class="card-title">Subresource Integrity (SRI)</span></div>
+      <p class="text-muted" style="font-size:12px;margin-bottom:.75rem">Verifica integridad de recursos externos via CDN con hashes criptográficos.</p>
+      <div class="code">&lt;!-- ✅ CON SRI — seguro --&gt;
+&lt;script
+  src="https://cdn.example.com/lib.js"
+  integrity="sha256-abc123..."
+  crossorigin="anonymous"&gt;
+&lt;/script&gt;
+
+&lt;!-- ❌ SIN SRI — vulnerable --&gt;
+&lt;script src="https://cdn.example.com/lib.js"&gt;
+&lt;/script&gt;
+&lt;!-- Si el CDN es comprometido, ejecuta código malicioso --&gt;</div>
+    </div>
+
+    <!-- Cookie segura demo -->
+    <div class="card">
+      <div class="card-header"><span>🍪</span><span class="card-title">Atributos de Cookie Seguros</span></div>
+      <table class="table">
+        <tr><th>Atributo</th><th>Estado</th><th>Protege contra</th></tr>
+        <tr>
+          <td><code>HttpOnly</code></td>
+          <td><span class="badge badge-success">✅ Activo</span></td>
+          <td class="text-muted" style="font-size:11px">XSS → robo de sesión</td>
+        </tr>
+        <tr>
+          <td><code>SameSite=Strict</code></td>
+          <td><span class="badge badge-success">✅ Activo</span></td>
+          <td class="text-muted" style="font-size:11px">CSRF cross-site</td>
+        </tr>
+        <tr>
+          <td><code>Secure</code></td>
+          <td><span class="badge badge-warning">⚠️ Solo HTTPS</span></td>
+          <td class="text-muted" style="font-size:11px">Sniffing de red</td>
+        </tr>
+      </table>
+      <div class="alert alert-info" style="margin-top:.75rem">
+        <strong>Prueba:</strong> Abre DevTools → Application → Cookies. Verás que la cookie de sesión tiene ✓ HttpOnly y no es accesible desde JavaScript.
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="testCookieAccess()">🧪 Intentar acceso JS a cookies</button>
+      <div id="cookie-result" class="result-box" style="margin-top:.75rem"></div>
+    </div>
+  </div>
+
+  <div style="margin-top:1rem;display:flex;gap:.75rem">
+    <a href="{{ url_for('demo.demo3') }}" class="btn btn-outline">← Demo 5.3</a>
+    <a href="{{ url_for('demo.demo5') }}" class="btn btn-primary">Siguiente: Demo 5.5 →</a>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function checkHeaders() {
+  const data = await apiGet('{{ url_for("demo.check_headers") }}');
+  showResult('headers-result', data);
+}
+function testCookieAccess() {
+  const cookies = document.cookie;
+  const result = {
+    js_accessible_cookies: cookies || "(vacío — ninguna cookie visible)",
+    session_cookie_visible: cookies.includes('session'),
+    explanation: cookies.includes('session')
+      ? "⚠️ Cookie de sesión visible (HttpOnly no configurado correctamente)"
+      : "✅ Cookie de sesión NO visible desde JavaScript (HttpOnly activo correctamente)",
+    note: "HttpOnly impide que XSS robe la cookie de sesión aunque logre ejecutar código"
+  };
+  showResult('cookie-result', result, cookies.includes('session'));
+}
+</script>
+{% endblock %}

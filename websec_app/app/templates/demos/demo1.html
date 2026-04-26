@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Demo 1 — Modelos de Seguridad Web{% endblock %}
+{% block content %}
+<div style="margin-top:1.5rem">
+  <div style="margin-bottom:1.5rem">
+    <a href="{{ url_for('dash.index') }}" class="text-muted" style="font-size:13px">← Dashboard</a>
+    <h1 class="section-title" style="margin-top:.5rem">🌐 Demo 5.1 — Modelos de Seguridad Web</h1>
+    <p class="text-muted">Same-Origin Policy, Zero Trust, CSP, cabeceras HTTP de seguridad</p>
+  </div>
+
+  <div class="grid grid-2">
+    <!-- Cabeceras activas -->
+    <div class="card">
+      <div class="card-header"><span>📋</span><span class="card-title">Cabeceras de Seguridad Activas</span></div>
+      {% for header, value in headers_info.items() %}
+      <div style="padding:.5rem 0;{% if not loop.last %}border-bottom:1px solid var(--border){% endif %}">
+        <div style="font-size:12px;font-weight:600;color:var(--purple)">{{ header }}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:.2rem">{{ value }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Test SOP -->
+    <div class="card">
+      <div class="card-header"><span>🔒</span><span class="card-title">Prueba Same-Origin Policy</span></div>
+      <p class="text-muted" style="font-size:12px;margin-bottom:1rem">Ingresa un origen para verificar si es permitido por la política CORS del servidor.</p>
+      <div class="form-group">
+        <label class="form-label">Origen a probar</label>
+        <input type="url" id="sop-origin" class="form-control" value="https://malicioso.com" placeholder="https://example.com">
+      </div>
+      <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
+        <button class="btn btn-outline btn-sm" onclick="testSOP('http://localhost:5000')">Mismo origen</button>
+        <button class="btn btn-outline btn-sm" onclick="testSOP('https://malicioso.com')">Origen ajeno</button>
+        <button class="btn btn-outline btn-sm" onclick="testSOP('https://websec.lab')">App socio</button>
+      </div>
+      <button class="btn btn-primary" onclick="testSOP()">Probar origen</button>
+      <div id="sop-result" class="result-box" style="margin-top:.75rem">Haz clic en "Probar origen"...</div>
+    </div>
+
+    <!-- Explicación Zero Trust -->
+    <div class="card">
+      <div class="card-header"><span>🛡️</span><span class="card-title">Modelo Zero Trust — Implementado</span></div>
+      <div style="display:grid;gap:.5rem">
+        {% set zt_items = [
+          ('✅', 'Verificar siempre', 'Cada request autentica y autoriza (RBAC)'),
+          ('✅', 'Mínimo privilegio', 'Cada rol solo tiene los permisos necesarios'),
+          ('✅', 'Asumir brecha', 'Logging de auditoría de todos los eventos'),
+          ('✅', 'MFA obligatorio', '2FA disponible para todas las cuentas'),
+          ('✅', 'Sesiones cortas', 'Expiración automática (15 minutos)'),
+        ] %}
+        {% for icon, title, desc in zt_items %}
+        <div style="display:flex;gap:.75rem;align-items:flex-start">
+          <span style="color:var(--green)">{{ icon }}</span>
+          <div>
+            <div style="font-size:13px;font-weight:600">{{ title }}</div>
+            <div style="font-size:12px;color:var(--muted)">{{ desc }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- CSP Demo -->
+    <div class="card">
+      <div class="card-header"><span>📜</span><span class="card-title">Content Security Policy</span></div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:.75rem">CSP activo en esta aplicación (ver cabecera en las DevTools):</p>
+      <div class="code">Content-Security-Policy:
+  default-src 'self';
+  script-src 'self' 'unsafe-inline';
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' data:;
+  frame-ancestors 'none';</div>
+      <div class="alert alert-info" style="margin-top:.75rem">
+        <strong>frame-ancestors 'none'</strong> → Previene clickjacking bloqueando la carga en iframes
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:1rem">
+    <a href="{{ url_for('demo.demo2') }}" class="btn btn-primary">Siguiente: Demo 5.2 Gestión de Sesiones →</a>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function testSOP(origin) {
+  const o = origin || document.getElementById('sop-origin').value;
+  document.getElementById('sop-origin').value = o;
+  const data = await apiPost('{{ url_for("demo.test_sop") }}', {origin: o});
+  showResult('sop-result', data, !data.allowed);
+}
+</script>
+{% endblock %}

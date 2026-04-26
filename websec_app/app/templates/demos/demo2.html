@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Demo 2 — Gestión de Sesiones{% endblock %}
+{% block content %}
+<div style="margin-top:1.5rem">
+  <div style="margin-bottom:1.5rem">
+    <a href="{{ url_for('dash.index') }}" class="text-muted" style="font-size:13px">← Dashboard</a>
+    <h1 class="section-title" style="margin-top:.5rem">🍪 Demo 5.2 — Gestión de Sesiones</h1>
+    <p class="text-muted">Tokens JWT, cookies seguras, MFA, expiración y protección de sesión</p>
+  </div>
+
+  <div class="grid grid-2">
+    <!-- Estado de la sesión actual -->
+    <div class="card">
+      <div class="card-header"><span>📊</span><span class="card-title">Estado de Tu Sesión Actual</span></div>
+      <table class="table">
+        <tr><td class="text-muted">Session Cookie</td><td><code style="color:var(--muted);font-size:11px">*** oculto (HttpOnly) ***</code></td></tr>
+        <tr><td class="text-muted">HttpOnly</td><td><span class="badge badge-success">✅ Activo</span></td></tr>
+        <tr><td class="text-muted">SameSite</td><td><span class="badge badge-success">Strict</span></td></tr>
+        <tr><td class="text-muted">Expiración</td><td><span class="text-muted" style="font-size:12px">15 minutos inactividad</span></td></tr>
+        <tr><td class="text-muted">MFA verificado</td>
+          <td>{% if session_info.mfa_verified %}<span class="badge badge-success">✅ Sí</span>{% else %}<span class="badge badge-warning">⚠️ No</span>{% endif %}</td></tr>
+        <tr><td class="text-muted">MFA en cuenta</td>
+          <td>{% if session_info.mfa_enabled %}<span class="badge badge-mfa">🛡️ Activo</span>{% else %}<a href="{{ url_for('auth.mfa_setup') }}" class="badge badge-warning">⚠️ Activar</a>{% endif %}</td></tr>
+      </table>
+      <button class="btn btn-outline btn-sm" style="margin-top:.75rem" onclick="loadSessionInfo()">🔄 Refrescar info de sesión</button>
+      <div id="session-result" class="result-box" style="margin-top:.75rem;font-size:11px">Haz clic en "Refrescar"...</div>
+    </div>
+
+    <!-- Tipos de ataques -->
+    <div class="card">
+      <div class="card-header"><span>⚔️</span><span class="card-title">Ataques a Sesiones — Defensas Activas</span></div>
+      {% set attacks = [
+        ('Session Hijacking', 'Robo del token de sesión', 'HttpOnly bloquea acceso JS al cookie · HTTPS cifra transmisión'),
+        ('Session Fixation', 'Forzar ID conocido al usuario', 'Flask regenera Session ID en cada login exitoso'),
+        ('CSRF', 'Acciones no autorizadas cross-site', 'Token CSRF en formularios + SameSite=Strict'),
+        ('Session Prediction', 'Adivinar el Session ID', 'Flask usa Werkzeug SecureCookieSession (firmada con SECRET_KEY)'),
+      ] %}
+      {% for name, desc, defense in attacks %}
+      <div style="padding:.6rem 0;{% if not loop.last %}border-bottom:1px solid var(--border){% endif %}">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:13px;font-weight:600;color:var(--red)">⚡ {{ name }}</span>
+          <span class="badge badge-success">Protegido</span>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:.2rem">{{ desc }}</div>
+        <div style="font-size:11px;color:var(--green);margin-top:.2rem">🛡️ {{ defense }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Diagrama de flujo de sesión -->
+    <div class="card">
+      <div class="card-header"><span>🔄</span><span class="card-title">Flujo de Autenticación con MFA</span></div>
+      <div style="font-family:monospace;font-size:12px;line-height:2">
+        <div style="color:var(--blue)">1. Usuario → POST /auth/login (user + password)</div>
+        <div style="color:var(--muted);padding-left:1.5rem">↓ bcrypt.verify(password, hash)</div>
+        <div style="color:var(--yellow)">2. Si MFA activo → redirige a /auth/mfa</div>
+        <div style="color:var(--muted);padding-left:1.5rem">↓ session["pending_user_id"] = uid</div>
+        <div style="color:var(--blue)">3. Usuario → POST /auth/mfa (código TOTP)</div>
+        <div style="color:var(--muted);padding-left:1.5rem">↓ pyotp.TOTP(secret).verify(token)</div>
+        <div style="color:var(--green)">4. ✅ login_user() + session["mfa_verified"] = True</div>
+        <div style="color:var(--muted);padding-left:1.5rem">↓ Cookie HttpOnly; SameSite=Strict</div>
+        <div style="color:var(--teal)">5. Acceso concedido al dashboard</div>
+      </div>
+    </div>
+
+    <!-- CSRF demo -->
+    <div class="card">
+      <div class="card-header"><span>🔐</span><span class="card-title">Protección CSRF activa</span></div>
+      <button class="btn btn-outline" onclick="loadCsrfInfo()">Ver token CSRF actual</button>
+      <div id="csrf-result" class="result-box" style="margin-top:.75rem">Haz clic para ver...</div>
+    </div>
+  </div>
+
+  <div style="margin-top:1rem;display:flex;gap:.75rem">
+    <a href="{{ url_for('demo.demo1') }}" class="btn btn-outline">← Demo 5.1</a>
+    <a href="{{ url_for('demo.demo3') }}" class="btn btn-primary">Siguiente: Demo 5.3 Vulnerabilidades →</a>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function loadSessionInfo() {
+  const data = await apiGet('{{ url_for("demo.api_session_info") }}');
+  showResult('session-result', data);
+}
+async function loadCsrfInfo() {
+  const data = await apiGet('{{ url_for("demo.demo_csrf_info") }}');
+  showResult('csrf-result', data);
+}
+</script>
+{% endblock %}
